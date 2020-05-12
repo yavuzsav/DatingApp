@@ -14,7 +14,6 @@ using Microsoft.Extensions.Options;
 
 namespace DatingApp.API.Controllers
 {
-    [Authorize]
     [Route("api/users/{userId}/photos")]
     [ApiController]
     public class PhotosController : ControllerBase
@@ -55,7 +54,7 @@ namespace DatingApp.API.Controllers
             if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
                 return Unauthorized();
 
-            var userFromRepo = await _repository.GetUser(userId);
+            var userFromRepo = await _repository.GetUser(userId, true);
 
             var file = photoForCreationDto.File;
 
@@ -80,8 +79,8 @@ namespace DatingApp.API.Controllers
 
             var photo = _mapper.Map<Photo>(photoForCreationDto);
 
-            if (!userFromRepo.Photos.Any(u => u.IsMain))
-                photo.IsMain = true;
+            // if (!userFromRepo.Photos.Any(u => u.IsMain))
+            //     photo.IsMain = true;
 
             userFromRepo.Photos.Add(photo);
 
@@ -100,7 +99,7 @@ namespace DatingApp.API.Controllers
             if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
                 return Unauthorized();
 
-            var user = await _repository.GetUser(userId);
+            var user = await _repository.GetUser(userId, true);
 
             if (!user.Photos.Any(p => p.Id == id))
                 return Unauthorized();
@@ -110,8 +109,12 @@ namespace DatingApp.API.Controllers
             if (photoFromRepo.IsMain)
                 return BadRequest("This is already the main photo");
 
+            if (!photoFromRepo.IsApproved)
+                return BadRequest("This is not approved the photo");
+
             var currentMainPhoto = await _repository.GetMainPhotoForUser(userId);
-            currentMainPhoto.IsMain = false;
+            if (currentMainPhoto != null)
+                currentMainPhoto.IsMain = false;
 
             photoFromRepo.IsMain = true;
 
@@ -127,7 +130,7 @@ namespace DatingApp.API.Controllers
             if (userId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
                 return Unauthorized();
 
-            var user = await _repository.GetUser(userId);
+            var user = await _repository.GetUser(userId, true);
 
             if (!user.Photos.Any(p => p.Id == id))
                 return Unauthorized();
